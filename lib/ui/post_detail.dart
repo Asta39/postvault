@@ -6,6 +6,8 @@ import '../data/post_db.dart';
 import '../services/ai_key.dart';
 import '../services/categorizer.dart';
 import '../services/image_store.dart';
+import '../services/metadata.dart';
+import 'category_page.dart';
 import 'cream.dart';
 import 'post_tile.dart';
 
@@ -33,6 +35,7 @@ class PostDetailPage extends StatefulWidget {
 class _PostDetailPageState extends State<PostDetailPage> {
   late SavedPost post = widget.post;
   bool _describing = false;
+  bool _reanalysing = false;
 
   @override
   void initState() {
@@ -45,7 +48,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final text = [post.author, post.caption].whereType<String>().join('\n');
     if (text.trim().isEmpty) return;
     setState(() => _describing = true);
-    final c = await categorize(text, apiKey: await resolveGroqKey());
+    final c = await categorize(
+      text,
+      apiKey: await resolveGroqKey(),
+      categories: await widget.db.categories(),
+    );
     final updated = post.copyWith(
       description: c.description.isNotEmpty ? c.description : c.summary,
       links: c.links,
@@ -59,8 +66,84 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: Cream.body(context, size: 14, c: Cream.bg)),
+        backgroundColor: Cream.ink,
+        behavior: SnackBarBehavior.floating,
+        shape: const StadiumBorder(),
+        margin: EdgeInsets.fromLTRB(
+          context.gutter,
+          0,
+          context.gutter,
+          context.s(100),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Fetches the post again and redoes the AI work. Keeps the collection
+  /// unless the post was never sorted, and keeps the user's note.
+  Future<void> _reanalyse() async {
+    if (_reanalysing) return;
+    setState(() => _reanalysing = true);
+    try {
+      final meta = await fetchMetadata(post.url);
+      final author = meta.author ?? post.author;
+      final caption = meta.caption ?? post.caption;
+      final text = [author, caption].whereType<String>().join('\n');
+      if (text.trim().isEmpty) {
+        _toast('Could not read this post right now');
+        return;
+      }
+      final c = await categorize(
+        text,
+        apiKey: await resolveGroqKey(),
+        categories: await widget.db.categories(),
+      );
+      final updated = post.copyWith(
+        author: author,
+        caption: caption,
+        imageUrl: meta.imageUrl,
+        category: post.category == 'Other' ? c.category : null,
+        tags: c.tags.isEmpty ? null : c.tags,
+        summary: c.summary.isEmpty ? null : c.summary,
+        description: c.description.isEmpty ? null : c.description,
+        links: c.links.isEmpty ? null : c.links,
+      );
+      await widget.db.update(updated);
+      await ImageStore.instance.ensure(updated, widget.db);
+      if (mounted) setState(() => post = updated);
+      _toast('Post refreshed');
+    } finally {
+      if (mounted) setState(() => _reanalysing = false);
+    }
+  }
+
+  Future<void> _editNote() async {
+    final text = await showCreamInput(
+      context,
+      title: 'Your note',
+      action: 'Save note',
+      hint: 'Why you saved this, what to try…',
+      initial: post.note ?? '',
+      maxLines: 5,
+    );
+    if (text == null) return;
+    final updated = post.copyWith(note: text.trim());
+    await widget.db.update(updated);
+    if (mounted) setState(() => post = updated);
+  }
+
+  static const _newCollection = '\u0000new';
+
   Future<void> _move() async {
-    final cat = await showCreamSheet<String>(
+    final all = await widget.db.categories();
+    if (!mounted) return;
+    var cat = await showCreamSheet<String>(
       context,
       title: 'Move to',
       builder: (c) => ConstrainedBox(
@@ -71,7 +154,26 @@ class _PostDetailPageState extends State<PostDetailPage> {
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           children: [
-            for (final cat in categories)
+            InkWell(
+              onTap: () => Navigator.pop(c, _newCollection),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: c.s(15)),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Cream.line)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.add, color: Cream.ink, size: c.s(20)),
+                    SizedBox(width: c.s(10)),
+                    Text(
+                      'New collection',
+                      style: Cream.body(c, size: 17, w: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            for (final cat in all)
               InkWell(
                 onTap: () => Navigator.pop(c, cat),
                 child: Container(
@@ -103,7 +205,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
         ),
       ),
     );
-    if (cat == null) return;
+    if (cat == null || !mounted) return;
+    if (cat == _newCollection) {
+      final name = (await showCreamInput(
+        context,
+        title: 'New collection',
+        action: 'Create and move',
+        hint: 'Collection name',
+      ))?.trim();
+      if (name == null || name.isEmpty) return;
+      await widget.db.addCollection(name);
+      cat = name;
+    }
     final updated = post.copyWith(category: cat);
     await widget.db.update(updated);
     setState(() => post = updated);
@@ -186,9 +299,19 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     child: Text(
                                       post.category.toUpperCase(),
                                       textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: Cream.label(context, c: Cream.ink),
                                     ),
                                   ),
+                                  GlassIcon(
+                                    icon: _reanalysing
+                                        ? Icons.hourglass_empty
+                                        : Icons.refresh,
+                                    label: 'Refresh this post',
+                                    onTap: _reanalyse,
+                                  ),
+                                  SizedBox(width: context.s(8)),
                                   GlassIcon(
                                     icon: Icons.delete_outline,
                                     label: 'Delete',
@@ -271,6 +394,28 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                         style: Cream.body(context, size: 16),
                                       ),
                               ),
+                              SizedBox(height: context.s(12)),
+                              InkWell(
+                                onTap: _editNote,
+                                borderRadius: BorderRadius.circular(
+                                  context.s(28),
+                                ),
+                                child: _section(
+                                  'YOUR NOTE',
+                                  Text(
+                                    (post.note ?? '').isNotEmpty
+                                        ? post.note!
+                                        : 'Tap to add a note',
+                                    style: Cream.body(
+                                      context,
+                                      size: 16,
+                                      c: (post.note ?? '').isNotEmpty
+                                          ? Cream.ink
+                                          : Cream.muted,
+                                    ),
+                                  ),
+                                ),
+                              ),
                               if (post.links.isNotEmpty) ...[
                                 SizedBox(height: context.s(12)),
                                 _section(
@@ -343,15 +488,32 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                   runSpacing: context.s(8),
                                   children: [
                                     for (final t in post.tags)
-                                      Frost(
-                                        radius: 16,
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: context.s(14),
-                                          vertical: context.s(8),
+                                      InkWell(
+                                        // Tapping a tag searches all saves.
+                                        onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => CategoryPage(
+                                              db: widget.db,
+                                              initialQuery: t,
+                                            ),
+                                          ),
                                         ),
-                                        child: Text(
-                                          t,
-                                          style: Cream.body(context, size: 13),
+                                        borderRadius: BorderRadius.circular(
+                                          context.s(16),
+                                        ),
+                                        child: Frost(
+                                          radius: 16,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: context.s(14),
+                                            vertical: context.s(10),
+                                          ),
+                                          child: Text(
+                                            t,
+                                            style: Cream.body(
+                                              context,
+                                              size: 13,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                   ],
@@ -379,7 +541,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       children: [
                         Expanded(
                           child: InkPill(
-                            label: 'Open in Instagram',
+                            label: 'Open in ${sourceName(post.url)}',
                             onTap: () => launchUrl(
                               Uri.parse(post.url),
                               mode: LaunchMode.externalApplication,

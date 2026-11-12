@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:share_plus/share_plus.dart';
@@ -64,6 +65,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _search = TextEditingController();
   StreamSubscription<List<SharedMediaFile>>? _shareSub;
+  Timer? _debounce;
   List<SavedPost> _results = [];
   Map<String, int> _counts = {};
   int _processing = 0;
@@ -90,6 +92,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _shareSub?.cancel();
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -106,10 +109,18 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _onShared(List<SharedMediaFile> files) {
-    for (final f in files) {
-      final url = extractUrl('${f.path} ${f.message ?? ''}');
-      if (url != null) _savePost(url);
+  /// Saves posts shared from another app, then hands the screen back to
+  /// that app so saving doesn't interrupt scrolling.
+  Future<void> _onShared(List<SharedMediaFile> files) async {
+    final urls = [
+      for (final f in files) extractUrl('${f.path} ${f.message ?? ''}'),
+    ].whereType<String>().toList();
+    if (urls.isEmpty) return;
+    await Future.wait(urls.map(_savePost));
+    // Leave the confirmation up long enough to read, then go back.
+    await Future<void>.delayed(const Duration(milliseconds: 1300));
+    if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+      await SystemNavigator.pop();
     }
   }
 
@@ -142,7 +153,11 @@ class _HomePageState extends State<HomePage> {
     try {
       final meta = await fetchMetadata(url);
       final text = [meta.author, meta.caption].whereType<String>().join('\n');
-      final c = await categorize(text, apiKey: await resolveGroqKey());
+      final c = await categorize(
+        text,
+        apiKey: await resolveGroqKey(),
+        categories: await widget.db.categories(),
+      );
       final post = SavedPost(
         url: url,
         author: meta.author,
@@ -300,7 +315,7 @@ class _HomePageState extends State<HomePage> {
             autofocus: true,
             style: Cream.body(c, size: 16),
             decoration: InputDecoration(
-              hintText: 'https://www.instagram.com/p/…',
+              hintText: 'Instagram, TikTok, YouTube or X link',
               hintStyle: Cream.body(c, size: 16, c: Cream.muted),
               filled: true,
               fillColor: const Color(0x80FFFFFF),
@@ -448,7 +463,14 @@ class _HomePageState extends State<HomePage> {
                           c: Cream.muted,
                         ),
                         searchIconColor: Cream.ink,
-                        onChanged: (_) => _refresh(),
+                        // Wait for a pause in typing before searching.
+                        onChanged: (_) {
+                          _debounce?.cancel();
+                          _debounce = Timer(
+                            const Duration(milliseconds: 220),
+                            _refresh,
+                          );
+                        },
                       ),
                     ),
                     SizedBox(width: context.s(10)),

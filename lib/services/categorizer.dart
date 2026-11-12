@@ -35,7 +35,7 @@ List<String> extractLinks(String text) {
   return out.take(10).toList();
 }
 
-const categories = [
+const defaultCategories = [
   'Food & Recipes',
   'Fitness & Health',
   'Travel',
@@ -211,7 +211,11 @@ Categorization keywordCategorize(String text) {
 }
 
 /// AI categorisation via the Groq API. Falls back to keywords on any error.
-Future<Categorization> categorize(String text, {String? apiKey}) async {
+Future<Categorization> categorize(
+  String text, {
+  String? apiKey,
+  List<String> categories = defaultCategories,
+}) async {
   if (text.trim().isEmpty) return const Categorization('Other', [], '');
   if (apiKey == null || apiKey.isEmpty) return keywordCategorize(text);
   try {

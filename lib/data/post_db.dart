@@ -1,6 +1,8 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../services/categorizer.dart' show defaultCategories;
+
 class SavedPost {
   final int? id;
   final String url;
@@ -67,19 +69,24 @@ class SavedPost {
   );
 
   SavedPost copyWith({
+    String? author,
+    String? caption,
+    String? imageUrl,
     String? category,
+    List<String>? tags,
+    String? summary,
     String? note,
     String? description,
     List<String>? links,
   }) => SavedPost(
     id: id,
     url: url,
-    author: author,
-    caption: caption,
-    imageUrl: imageUrl,
+    author: author ?? this.author,
+    caption: caption ?? this.caption,
+    imageUrl: imageUrl ?? this.imageUrl,
     category: category ?? this.category,
-    tags: tags,
-    summary: summary,
+    tags: tags ?? this.tags,
+    summary: summary ?? this.summary,
     note: note ?? this.note,
     description: description ?? this.description,
     links: links ?? this.links,
@@ -88,20 +95,27 @@ class SavedPost {
 }
 
 class PostDb {
+  static const _collectionsTable =
+      'CREATE TABLE IF NOT EXISTS collections(name TEXT PRIMARY KEY)';
+
   PostDb._(this._db);
   final Database _db;
 
   static Future<PostDb> open() async {
     final db = await openDatabase(
       p.join(await getDatabasesPath(), 'postvault.db'),
-      version: 2,
+      version: 3,
       onUpgrade: (db, from, _) async {
         if (from < 2) {
           await db.execute('ALTER TABLE posts ADD COLUMN description TEXT');
           await db.execute('ALTER TABLE posts ADD COLUMN links TEXT');
         }
+        // v3 only adds a table; the posts table is not touched.
+        if (from < 3) await db.execute(_collectionsTable);
       },
-      onCreate: (db, _) => db.execute('''
+      onCreate: (db, _) async {
+        await db.execute(_collectionsTable);
+        await db.execute('''
         CREATE TABLE posts(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT UNIQUE NOT NULL,
@@ -109,7 +123,8 @@ class PostDb {
           category TEXT NOT NULL, tags TEXT, summary TEXT, note TEXT,
           description TEXT, links TEXT,
           saved_at INTEGER NOT NULL
-        )'''),
+        )''');
+      },
     );
     return PostDb._(db);
   }
@@ -141,7 +156,11 @@ class PostDb {
       _db.delete('posts', where: 'id = ?', whereArgs: [id]);
 
   /// Every word in [query] must appear in some searchable field.
-  Future<List<SavedPost>> search({String query = '', String? category}) async {
+  Future<List<SavedPost>> search({
+    String query = '',
+    String? category,
+    bool oldestFirst = false,
+  }) async {
     final where = <String>[];
     final args = <Object?>[];
     if (category != null) {
@@ -161,7 +180,7 @@ class PostDb {
       'posts',
       where: where.isEmpty ? null : where.join(' AND '),
       whereArgs: args,
-      orderBy: 'saved_at DESC',
+      orderBy: oldestFirst ? 'saved_at ASC' : 'saved_at DESC',
     );
     return rows.map(SavedPost.fromMap).toList();
   }
@@ -172,4 +191,34 @@ class PostDb {
     );
     return {for (final r in rows) r['category'] as String: r['c'] as int};
   }
+
+  /// Built-in collections, then the user's own, then any other name in use.
+  Future<List<String>> categories() async {
+    final custom = await _db.query('collections', orderBy: 'name');
+    final used = await _db.rawQuery('SELECT DISTINCT category FROM posts');
+    return <String>{
+      ...defaultCategories,
+      for (final r in custom) r['name'] as String,
+      for (final r in used) r['category'] as String,
+    }.toList();
+  }
+
+  Future<void> addCollection(String name) => _db.insert('collections', {
+    'name': name,
+  }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+  /// Renames a collection and moves every post in it, in one transaction.
+  Future<void> renameCollection(String from, String to) =>
+      _db.transaction((txn) async {
+        await txn.update(
+          'posts',
+          {'category': to},
+          where: 'category = ?',
+          whereArgs: [from],
+        );
+        await txn.delete('collections', where: 'name = ?', whereArgs: [from]);
+        await txn.insert('collections', {
+          'name': to,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      });
 }

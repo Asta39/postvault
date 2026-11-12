@@ -22,15 +22,40 @@ final _urlRe = RegExp(r'https?://\S+');
 /// Pull the first URL out of shared text (Instagram shares "text + link").
 String? extractUrl(String shared) => _urlRe.firstMatch(shared)?.group(0);
 
-/// Normalise an Instagram link so the same post is not saved twice.
+/// Normalise a link so the same post is not saved twice.
+///
+/// Instagram links drop their tracking query. Other sites keep the parts
+/// that identify the page (for example YouTube's `v`).
 String normaliseUrl(String url) {
   final uri = Uri.tryParse(url);
   if (uri == null) return url;
-  final path = uri.path.endsWith('/') ? uri.path : '${uri.path}/';
   final host = uri.host.startsWith('m.')
       ? 'www.${uri.host.substring(2)}'
       : uri.host;
-  return Uri(scheme: 'https', host: host, path: path).toString();
+  if (host.endsWith('instagram.com')) {
+    final path = uri.path.endsWith('/') ? uri.path : '${uri.path}/';
+    return Uri(scheme: 'https', host: host, path: path).toString();
+  }
+  final v = uri.queryParameters['v'];
+  final keepQuery = host.endsWith('youtube.com') && v != null;
+  return Uri(
+    scheme: 'https',
+    host: host,
+    path: uri.path,
+    queryParameters: keepQuery ? {'v': v} : null,
+  ).toString();
+}
+
+/// App name for the "Open in ..." button.
+String sourceName(String url) {
+  final host = Uri.tryParse(url)?.host ?? '';
+  if (host.contains('instagram.')) return 'Instagram';
+  if (host.contains('tiktok.')) return 'TikTok';
+  if (host.contains('youtube.') || host.contains('youtu.be')) return 'YouTube';
+  if (host.contains('twitter.') || host == 'x.com' || host.endsWith('.x.com')) {
+    return 'X';
+  }
+  return 'browser';
 }
 
 String _decode(String s) => s
@@ -86,6 +111,11 @@ Future<PostMetadata> fetchMetadata(String url) async {
       if (m != null) {
         author = m.group(1);
         caption = m.group(2);
+      } else if (desc != null && desc != title) {
+        // Other sites: the title is the headline, the description the body.
+        caption = '$title\n$desc';
+      } else {
+        caption = title;
       }
     }
     return PostMetadata(

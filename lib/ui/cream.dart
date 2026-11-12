@@ -327,3 +327,48 @@ class Frost extends StatelessWidget {
     child: child,
   );
 }
+
+/// Glass sheet with one text box. Returns the text, or null if dismissed.
+Future<String?> showCreamInput(
+  BuildContext context, {
+  required String title,
+  required String action,
+  String hint = '',
+  String initial = '',
+  int maxLines = 1,
+}) {
+  final ctrl = TextEditingController(text: initial);
+  return showCreamSheet<String>(
+    context,
+    title: title,
+    builder: (c) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: ctrl,
+          autofocus: true,
+          minLines: 1,
+          maxLines: maxLines,
+          textCapitalization: TextCapitalization.sentences,
+          style: Cream.body(c, size: 16),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: Cream.body(c, size: 16, c: Cream.muted),
+            filled: true,
+            fillColor: const Color(0x80FFFFFF),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: c.s(18),
+              vertical: c.s(18),
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(c.s(20)),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        SizedBox(height: c.s(16)),
+        InkPill(label: action, onTap: () => Navigator.pop(c, ctrl.text)),
+      ],
+    ),
+  );
+}

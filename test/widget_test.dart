@@ -50,4 +50,18 @@ void main() {
     expect(a, ImageStore.nameFor('https://www.instagram.com/reel/abc_-1/'));
     expect(RegExp(r'^[A-Za-z0-9_-]+\.jpg$').hasMatch(a), isTrue);
   });
+
+  test('other sites keep what identifies the page', () {
+    expect(
+      normaliseUrl('https://m.youtube.com/watch?v=abc123&si=track'),
+      'https://www.youtube.com/watch?v=abc123',
+    );
+    expect(
+      normaliseUrl('https://www.tiktok.com/@user/video/123?is_from_webapp=1'),
+      'https://www.tiktok.com/@user/video/123',
+    );
+    expect(sourceName('https://www.tiktok.com/@u/video/1'), 'TikTok');
+    expect(sourceName('https://x.com/a/status/1'), 'X');
+    expect(sourceName('https://www.instagram.com/p/a/'), 'Instagram');
+  });
 }
