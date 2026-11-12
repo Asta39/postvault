@@ -20,10 +20,10 @@ pulls out every link it mentions, and makes it searchable by keyword.
 ---
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="23%" alt="Home: saved count and collections" />
+  <img src="docs/screenshots/home.png" width="23%" alt="Home: saved count and collections with covers" />
   <img src="docs/screenshots/category.png" width="23%" alt="A collection of saved posts" />
   <img src="docs/screenshots/post.png" width="23%" alt="A saved post" />
-  <img src="docs/screenshots/post_details.png" width="23%" alt="AI description and extracted links" />
+  <img src="docs/screenshots/post_details.png" width="23%" alt="AI description, your note and extracted links" />
 </p>
 
 ## Why
@@ -34,25 +34,32 @@ again by typing what it was about.
 
 ## Features
 
-- **Save from the share sheet.** In Instagram tap **Share → PostVault** on any post or reel. Or paste a link with **+**.
-- **Automatic collections.** Each post is sorted into a category such as Food & Recipes, Fitness, Travel or Tech.
+- **Save from the share sheet.** Tap **Share → PostVault** on an Instagram, TikTok, YouTube or X post, or paste a link with **+**. PostVault saves it and returns you to the app you were in.
+- **Automatic collections.** Each post is sorted into a category such as Food & Recipes, Fitness, Travel or Tech. Create and rename your own collections; the AI sorts into those too.
 - **AI description.** A two to three sentence summary of what the post is about and its key takeaway.
 - **Links, extracted.** Websites, URLs, tools and @accounts mentioned in the caption, one tap to open.
-- **Search everything.** Search across all saves from home, or inside a single collection. Matches captions, creators, tags, titles and descriptions.
-- **Liquid glass design.** A cream and gold interface with frosted glass surfaces, built to scale across phone and tablet sizes.
+- **Your notes.** Add a note to any post to remember why you saved it.
+- **Search everything.** Search all saves from home or inside one collection, tap a tag to search it, and sort newest or oldest first.
+- **Quick actions.** Long-press a post to open, move or delete it. Deletes can be undone.
+- **Pictures kept on the phone.** Thumbnails are stored locally, so they keep working after Instagram's links expire.
+- **Backup.** Export every post and picture to one file, and import it on another phone.
+- **Light and dark.** A cream and gold liquid-glass interface that follows the phone's theme and scales across phone and tablet sizes.
 - **Private by default.** Posts are stored on the device in SQLite. There is no account and no server.
 
 <p align="center">
-  <img src="docs/screenshots/add.png" width="23%" alt="Add a post by link" />
-  <img src="docs/screenshots/move.png" width="23%" alt="Move a post to another collection" />
-  <img src="docs/screenshots/settings.png" width="23%" alt="AI settings" />
+  <img src="docs/screenshots/recent.png" width="23%" alt="Recently saved row" />
+  <img src="docs/screenshots/actions.png" width="23%" alt="Long-press actions" />
+  <img src="docs/screenshots/move.png" width="23%" alt="Move a post or create a collection" />
+  <img src="docs/screenshots/settings.png" width="23%" alt="AI key and backup settings" />
 </p>
 
 ## Install
 
-1. Download `PostVault-v1.0.0.apk` from the [latest release](https://github.com/Asta39/postvault/releases/latest).
+1. Download `PostVault-v1.1.0.apk` from the [latest release](https://github.com/Asta39/postvault/releases/latest).
 2. Open it on your Android phone and allow installing from this source when asked.
 3. Open Instagram, tap **Share** on a post, and choose **PostVault**.
+
+Updating from v1.0.0? Install over it; your saved posts are kept.
 
 Requires Android 5.0 (API 21) or newer.
 
@@ -69,9 +76,10 @@ The key is kept in Android's encrypted storage on your phone and is only sent to
 ## How it works
 
 ```
-Instagram ──Share──▶ PostVault
+Instagram / TikTok / YouTube / X ──Share──▶ PostVault
                        │
                        ├─ fetch the post's preview (caption, author, image)
+                       ├─ keep a copy of the image on the device
                        ├─ Groq (openai/gpt-oss-20b) → category, tags, title,
                        │                              description, links
                        │      └─ offline keyword fallback if no key / no network
@@ -85,6 +93,7 @@ Instagram ──Share──▶ PostVault
 | AI categorising and link extraction | [`lib/services/categorizer.dart`](lib/services/categorizer.dart) |
 | Post preview scraping | [`lib/services/metadata.dart`](lib/services/metadata.dart) |
 | Storage and search | [`lib/data/post_db.dart`](lib/data/post_db.dart) |
+| Stored images and backup | [`lib/services/image_store.dart`](lib/services/image_store.dart), [`lib/services/backup.dart`](lib/services/backup.dart) |
 
 Built with [Flutter](https://flutter.dev),
 [liquid_glass_widgets](https://pub.dev/packages/liquid_glass_widgets),
@@ -115,6 +124,7 @@ flutter build apk --release --dart-define-from-file=secrets.json
 - Instagram has no API for saved posts, so posts come in through the share sheet one at a time.
 - Captions and images come from the post's public link preview. Private accounts, and posts Instagram
   refuses to preview, are saved as a link and sorted as "Other".
+- TikTok, YouTube and X saves rely on each site's public link preview and are less tested than Instagram.
 - Android only for now.
 
 ## License
