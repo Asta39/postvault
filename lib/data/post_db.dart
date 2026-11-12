@@ -130,6 +130,13 @@ class PostDb {
   Future<void> update(SavedPost post) =>
       _db.update('posts', post.toMap(), where: 'id = ?', whereArgs: [post.id]);
 
+  Future<void> setImageUrl(int id, String imageUrl) => _db.update(
+    'posts',
+    {'image_url': imageUrl},
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+
   Future<void> delete(int id) =>
       _db.delete('posts', where: 'id = ?', whereArgs: [id]);
 

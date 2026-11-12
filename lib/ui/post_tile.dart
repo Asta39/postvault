@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/post_db.dart';
+import '../services/image_store.dart';
 import 'cream.dart';
 
 /// Grid of post tiles that adapts its column count to the screen.
@@ -42,14 +43,7 @@ class PostTile extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Container(color: const Color(0xFFEFE6C8)),
-              if (post.imageUrl != null)
-                Image.network(
-                  post.imageUrl!,
-                  fit: BoxFit.cover,
-                  cacheWidth: 480,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => const SizedBox(),
-                ),
+              PostImage(post: post, cacheWidth: 480),
               Positioned(
                 left: context.s(8),
                 right: context.s(8),
@@ -96,6 +90,36 @@ class PostTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A post's picture: the copy stored on the phone when there is one,
+/// otherwise the Instagram link (which can expire).
+class PostImage extends StatelessWidget {
+  const PostImage({super.key, required this.post, required this.cacheWidth});
+  final SavedPost post;
+  final int cacheWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = ImageStore.instance.fileFor(post.url);
+    if (file != null) {
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        cacheWidth: cacheWidth,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => const SizedBox(),
+      );
+    }
+    if (post.imageUrl == null) return const SizedBox();
+    return Image.network(
+      post.imageUrl!,
+      fit: BoxFit.cover,
+      cacheWidth: cacheWidth,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => const SizedBox(),
     );
   }
 }

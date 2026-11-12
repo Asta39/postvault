@@ -1,12 +1,18 @@
 import 'dart:async';
 
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'data/post_db.dart';
 import 'services/ai_key.dart';
+import 'services/backup.dart';
 import 'services/categorizer.dart';
+import 'services/image_store.dart';
 import 'services/metadata.dart';
 import 'ui/category_page.dart';
 import 'ui/cream.dart';
@@ -18,6 +24,7 @@ void main() async {
   await LiquidGlassWidgets.initialize(enablePerformanceMonitor: false);
   if (const bool.fromEnvironment('PERF_LOG')) _logFrames();
   final db = await PostDb.open();
+  await ImageStore.instance.init();
   runApp(
     LiquidGlassWidgets.wrap(
       child: PostVaultApp(db: db),
@@ -67,6 +74,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _refresh();
+    // Store pictures for posts saved before images were kept on the phone.
+    ImageStore.instance.backfill(widget.db).then((n) {
+      if (n > 0 && mounted) setState(() {});
+    });
     _shareSub = ReceiveSharingIntent.instance.getMediaStream().listen(
       _onShared,
     );
@@ -132,24 +143,56 @@ class _HomePageState extends State<HomePage> {
       final meta = await fetchMetadata(url);
       final text = [meta.author, meta.caption].whereType<String>().join('\n');
       final c = await categorize(text, apiKey: await resolveGroqKey());
-      await widget.db.insert(
-        SavedPost(
-          url: url,
-          author: meta.author,
-          caption: meta.caption,
-          imageUrl: meta.imageUrl,
-          category: c.category,
-          tags: c.tags,
-          summary: c.summary,
-          description: c.description,
-          links: c.links,
-          savedAt: DateTime.now(),
-        ),
+      final post = SavedPost(
+        url: url,
+        author: meta.author,
+        caption: meta.caption,
+        imageUrl: meta.imageUrl,
+        category: c.category,
+        tags: c.tags,
+        summary: c.summary,
+        description: c.description,
+        links: c.links,
+        savedAt: DateTime.now(),
       );
+      await widget.db.insert(post);
+      await ImageStore.instance.ensure(post, widget.db);
       _toast('Saved to ${c.category}');
     } finally {
       if (mounted) setState(() => _processing--);
       await _refresh();
+    }
+  }
+
+  static const _exportAction = '\u0000export';
+  static const _importAction = '\u0000import';
+
+  Future<void> _export() async {
+    try {
+      final file = await exportBackup(widget.db);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: 'PostVault backup'),
+      );
+    } catch (_) {
+      _toast('Could not create the backup');
+    }
+  }
+
+  Future<void> _import() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+      final path = picked.isEmpty ? null : picked.first.path;
+      if (path == null) return;
+      final added = await importBackup(widget.db, File(path));
+      _toast(added == 0 ? 'Nothing new in that backup' : 'Added $added posts');
+      await _refresh();
+    } on FormatException {
+      _toast('That file is not a PostVault backup');
+    } catch (_) {
+      _toast('Could not read that backup');
     }
   }
 
@@ -207,10 +250,38 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
+          SizedBox(height: c.s(20)),
+          Text('BACKUP', style: Cream.label(c, size: 14, c: Cream.ink)),
+          SizedBox(height: c.s(8)),
+          Text(
+            'Export saves all your posts and pictures to one file. Keep it '
+            'somewhere off this phone, like Google Drive.',
+            style: Cream.body(c, size: 14, c: Cream.muted),
+          ),
+          SizedBox(height: c.s(8)),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(c, _exportAction),
+                  child: Text('Export', style: Cream.body(c, size: 15)),
+                ),
+              ),
+              SizedBox(width: c.s(10)),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(c, _importAction),
+                  child: Text('Import', style: Cream.body(c, size: 15)),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
     if (result == null) return;
+    if (result == _exportAction) return _export();
+    if (result == _importAction) return _import();
     if (result.trim().isEmpty && !hasOwn) return;
     await setUserGroqKey(result);
     _toast(result.trim().isEmpty ? 'Key removed' : 'Key saved');

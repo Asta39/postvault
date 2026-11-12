@@ -5,7 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/post_db.dart';
 import '../services/ai_key.dart';
 import '../services/categorizer.dart';
+import '../services/image_store.dart';
 import 'cream.dart';
+import 'post_tile.dart';
 
 /// Turns a mentioned link, domain, @handle or product name into a URL.
 Uri linkTarget(String link) {
@@ -125,6 +127,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
     if (ok != true) return;
     await widget.db.delete(post.id!);
+    await ImageStore.instance.remove(post.url);
     if (mounted) Navigator.pop(context);
   }
 
@@ -204,14 +207,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     fit: StackFit.expand,
                                     children: [
                                       Container(color: const Color(0xFFEFE6C8)),
-                                      if (post.imageUrl != null)
-                                        Image.network(
-                                          post.imageUrl!,
-                                          fit: BoxFit.cover,
-                                          cacheWidth: 1080,
-                                          errorBuilder: (_, _, _) =>
-                                              const SizedBox(),
-                                        ),
+                                      PostImage(post: post, cacheWidth: 1080),
                                       Positioned(
                                         left: context.s(14),
                                         right: context.s(14),
