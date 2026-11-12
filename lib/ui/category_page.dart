@@ -33,6 +33,9 @@ class _CategoryPageState extends State<CategoryPage> {
   bool _oldestFirst = false;
   Timer? _debounce;
 
+  /// Ids of ticked posts while selecting; null when not selecting.
+  Set<int>? _sel;
+
   bool get _searching => _search.text.trim().isNotEmpty;
   String get _name => _category ?? 'All saves';
 
@@ -73,6 +76,75 @@ class _CategoryPageState extends State<CategoryPage> {
     _load();
   }
 
+  void _toggle(SavedPost p) => setState(() {
+    final sel = _sel!;
+    if (!sel.remove(p.id)) sel.add(p.id!);
+  });
+
+  List<SavedPost> get _picked =>
+      _posts.where((p) => _sel?.contains(p.id) ?? false).toList();
+
+  Future<void> _moveSelected() async {
+    final moved = await movePosts(context, widget.db, _picked);
+    if (moved == 0 || !mounted) return;
+    setState(() => _sel = null);
+    _load();
+  }
+
+  Future<void> _deleteSelected() async {
+    final picked = _picked;
+    setState(() => _sel = null);
+    await deletePostsWithUndo(context, widget.db, picked, onChange: _load);
+  }
+
+  /// Replaces the search bar while posts are being selected.
+  Widget _selectionBar() {
+    final n = _sel!.length;
+    final all = n == _posts.length;
+    return Frost(
+      radius: 30,
+      color: Cream.captionFill,
+      padding: EdgeInsets.symmetric(
+        horizontal: context.s(8),
+        vertical: context.s(6),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Stop selecting',
+            icon: Icon(Icons.close, color: Cream.ink),
+            onPressed: () => setState(() => _sel = null),
+          ),
+          Expanded(
+            child: Text(
+              '$n selected',
+              style: Cream.body(context, size: 16, w: FontWeight.w600),
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(
+              () => _sel = all ? {} : {for (final p in _posts) p.id!},
+            ),
+            child: Text(
+              all ? 'None' : 'All',
+              style: Cream.body(context, size: 15),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Move selected',
+            icon: Icon(Icons.folder_outlined, color: Cream.ink),
+            onPressed: n == 0 ? null : _moveSelected,
+          ),
+          IconButton(
+            tooltip: 'Delete selected',
+            icon: Icon(Icons.delete_outline, color: Cream.ink),
+            onPressed: n == 0 ? null : _deleteSelected,
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _rename() async {
     final from = _category;
     if (from == null) return;
@@ -92,138 +164,166 @@ class _CategoryPageState extends State<CategoryPage> {
   @override
   Widget build(BuildContext context) {
     final g = context.gutter;
-    return Material(
-      type: MaterialType.transparency,
-      child: GlassScaffold(
-        // Edge fades re-blur the content every scroll frame; skip them.
-        edgeFade: false,
-        background: const CreamBackground(alignment: Alignment(-0.3, -0.6)),
-        body: Stack(
-          children: [
-            CustomScrollView(
-              slivers: [
-                SliverSafeArea(
-                  bottom: false,
-                  sliver: SliverPadding(
-                    padding: EdgeInsets.fromLTRB(g, context.s(8), g, 0),
-                    sliver: SliverList.list(
-                      children: [
-                        Row(
-                          children: [
-                            GlassIcon(
-                              icon: Icons.chevron_left,
-                              label: 'Back',
-                              onTap: () => Navigator.pop(context),
-                            ),
-                            const Spacer(),
-                            GlassIcon(
-                              icon: _oldestFirst
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              label: _oldestFirst
-                                  ? 'Showing oldest first'
-                                  : 'Showing newest first',
-                              onTap: () {
-                                setState(() => _oldestFirst = !_oldestFirst);
-                                _load();
-                              },
-                            ),
-                            if (_category != null) ...[
-                              SizedBox(width: context.s(8)),
+    return PopScope(
+      canPop: _sel == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _sel = null);
+      },
+      child: Material(
+        type: MaterialType.transparency,
+        child: GlassScaffold(
+          // Edge fades re-blur the content every scroll frame; skip them.
+          edgeFade: false,
+          background: const CreamBackground(alignment: Alignment(-0.3, -0.6)),
+          body: Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  SliverSafeArea(
+                    bottom: false,
+                    sliver: SliverPadding(
+                      padding: EdgeInsets.fromLTRB(g, context.s(8), g, 0),
+                      sliver: SliverList.list(
+                        children: [
+                          Row(
+                            children: [
                               GlassIcon(
-                                icon: Icons.edit_outlined,
-                                label: 'Rename collection',
-                                onTap: _rename,
+                                icon: Icons.chevron_left,
+                                label: 'Back',
+                                onTap: () => Navigator.pop(context),
+                              ),
+                              const Spacer(),
+                              GlassIcon(
+                                icon: _oldestFirst
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward,
+                                label: _oldestFirst
+                                    ? 'Showing oldest first'
+                                    : 'Showing newest first',
+                                onTap: () {
+                                  setState(() => _oldestFirst = !_oldestFirst);
+                                  _load();
+                                },
+                              ),
+                              if (_category != null) ...[
+                                SizedBox(width: context.s(8)),
+                                GlassIcon(
+                                  icon: Icons.edit_outlined,
+                                  label: 'Rename collection',
+                                  onTap: _rename,
+                                ),
+                              ],
+                            ],
+                          ),
+                          SizedBox(height: context.s(28)),
+                          Text(
+                            _searching
+                                ? 'RESULTS IN ${_name.toUpperCase()}'
+                                : _name.toUpperCase(),
+                            style: Cream.label(context, size: 13),
+                          ),
+                          SizedBox(height: context.s(6)),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${_posts.length}',
+                                style: Cream.display(context),
+                              ),
+                              const Spacer(),
+                              Padding(
+                                padding: EdgeInsets.only(bottom: context.s(8)),
+                                child: Text(
+                                  _oldestFirst
+                                      ? 'OLDEST FIRST'
+                                      : 'NEWEST FIRST',
+                                  style: Cream.label(context, size: 11),
+                                ),
                               ),
                             ],
-                          ],
+                          ),
+                          SizedBox(height: context.s(28)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_posts.isEmpty && _searching)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(context.s(32)),
+                        child: Text(
+                          'Nothing in $_name matches that search.',
+                          textAlign: TextAlign.center,
+                          style: Cream.body(context, c: Cream.muted),
                         ),
-                        SizedBox(height: context.s(28)),
-                        Text(
-                          _searching
-                              ? 'RESULTS IN ${_name.toUpperCase()}'
-                              : _name.toUpperCase(),
-                          style: Cream.label(context, size: 13),
-                        ),
-                        SizedBox(height: context.s(6)),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${_posts.length}',
-                              style: Cream.display(context),
-                            ),
-                            const Spacer(),
-                            Padding(
-                              padding: EdgeInsets.only(bottom: context.s(8)),
-                              child: Text(
-                                _oldestFirst ? 'OLDEST FIRST' : 'NEWEST FIRST',
-                                style: Cream.label(context, size: 11),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      // Room at the bottom so the last row clears the search bar.
+                      padding: EdgeInsets.fromLTRB(g, 0, g, context.s(120)),
+                      sliver: PostGrid(
+                        posts: _posts,
+                        selected: _sel,
+                        onTap: (p) => _sel == null ? _open(p) : _toggle(p),
+                        onLongPress: (p) => _sel != null
+                            ? _toggle(p)
+                            : showPostActions(
+                                context,
+                                widget.db,
+                                p,
+                                onChange: _load,
+                                onSelect: () => setState(() => _sel = {p.id!}),
                               ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: context.s(28)),
-                      ],
-                    ),
-                  ),
-                ),
-                if (_posts.isEmpty && _searching)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(context.s(32)),
-                      child: Text(
-                        'Nothing in $_name matches that search.',
-                        textAlign: TextAlign.center,
-                        style: Cream.body(context, c: Cream.muted),
                       ),
                     ),
-                  )
-                else
-                  SliverPadding(
-                    // Room at the bottom so the last row clears the search bar.
-                    padding: EdgeInsets.fromLTRB(g, 0, g, context.s(120)),
-                    sliver: PostGrid(
-                      posts: _posts,
-                      onTap: _open,
-                      onLongPress: (p) => showPostActions(
-                        context,
-                        widget.db,
-                        p,
-                        onChange: _load,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            Positioned(
-              left: g,
-              right: g,
-              bottom: context.s(16),
-              child: SafeArea(
-                top: false,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 640),
-                    child: GlassSearchBar(
-                      controller: _search,
-                      settings: Cream.bar,
-                      placeholder: 'Search in $_name',
-                      height: context.s(58),
-                      textStyle: Cream.body(context, size: 16),
-                      placeholderStyle: Cream.body(
-                        context,
-                        size: 16,
-                        c: Cream.muted,
-                      ),
-                      searchIconColor: Cream.ink,
-                      onChanged: _onQuery,
-                    ),
-                  ),
-                ),
+                ],
               ),
-            ),
-          ],
+              if (_sel != null)
+                Positioned(
+                  left: g,
+                  right: g,
+                  bottom: context.s(16),
+                  child: SafeArea(
+                    top: false,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 640),
+                        child: _selectionBar(),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Positioned(
+                  left: g,
+                  right: g,
+                  bottom: context.s(16),
+                  child: SafeArea(
+                    top: false,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 640),
+                        child: GlassSearchBar(
+                          controller: _search,
+                          settings: Cream.bar,
+                          placeholder: 'Search in $_name',
+                          height: context.s(58),
+                          textStyle: Cream.body(context, size: 16),
+                          placeholderStyle: Cream.body(
+                            context,
+                            size: 16,
+                            c: Cream.muted,
+                          ),
+                          searchIconColor: Cream.ink,
+                          onChanged: _onQuery,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

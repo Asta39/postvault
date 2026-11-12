@@ -44,16 +44,16 @@ Widget _row(
   ),
 );
 
-/// Lets the user pick a collection (or create one) and moves [post] there.
-/// Returns the updated post, or null if nothing changed.
-Future<SavedPost?> movePost(
+/// Lets the user pick a collection or create one. [current] gets a tick.
+/// Returns the chosen name, or null if dismissed.
+Future<String?> pickCollection(
   BuildContext context,
-  PostDb db,
-  SavedPost post,
-) async {
+  PostDb db, {
+  String? current,
+}) async {
   final all = await db.categories();
   if (!context.mounted) return null;
-  var cat = await showCreamSheet<String>(
+  final cat = await showCreamSheet<String>(
     context,
     title: 'Move to',
     builder: (c) => ConstrainedBox(
@@ -73,30 +73,91 @@ Future<SavedPost?> movePost(
             _row(
               c,
               label: name,
-              bold: name == post.category,
-              checked: name == post.category,
+              bold: name == current,
+              checked: name == current,
               onTap: () => Navigator.pop(c, name),
             ),
         ],
       ),
     ),
   );
-  if (cat == null || !context.mounted) return null;
-  if (cat == _newCollection) {
-    final name = (await showCreamInput(
-      context,
-      title: 'New collection',
-      action: 'Create and move',
-      hint: 'Collection name',
-    ))?.trim();
-    if (name == null || name.isEmpty) return null;
-    await db.addCollection(name);
-    cat = name;
-  }
-  if (cat == post.category) return null;
+  if (cat != _newCollection || !context.mounted) return cat;
+  final name = (await showCreamInput(
+    context,
+    title: 'New collection',
+    action: 'Create and move',
+    hint: 'Collection name',
+  ))?.trim();
+  if (name == null || name.isEmpty) return null;
+  await db.addCollection(name);
+  return name;
+}
+
+/// Moves [post] to a collection the user picks.
+/// Returns the updated post, or null if nothing changed.
+Future<SavedPost?> movePost(
+  BuildContext context,
+  PostDb db,
+  SavedPost post,
+) async {
+  final cat = await pickCollection(context, db, current: post.category);
+  if (cat == null || cat == post.category) return null;
   final updated = post.copyWith(category: cat);
   await db.update(updated);
   return updated;
+}
+
+/// Moves several posts to one collection. Returns how many were moved.
+Future<int> movePosts(
+  BuildContext context,
+  PostDb db,
+  List<SavedPost> posts,
+) async {
+  final cat = await pickCollection(context, db);
+  if (cat == null) return 0;
+  var moved = 0;
+  for (final post in posts) {
+    if (post.category == cat) continue;
+    await db.update(post.copyWith(category: cat));
+    moved++;
+  }
+  if (context.mounted && moved > 0) {
+    showToast(context, 'Moved $moved ${moved == 1 ? 'post' : 'posts'} to $cat');
+  }
+  return moved;
+}
+
+/// Deletes several posts at once and offers one Undo for all of them.
+Future<void> deletePostsWithUndo(
+  BuildContext context,
+  PostDb db,
+  List<SavedPost> posts, {
+  VoidCallback? onChange,
+}) async {
+  if (posts.isEmpty) return;
+  for (final post in posts) {
+    await db.delete(post.id!);
+  }
+  onChange?.call();
+  if (!context.mounted) return;
+  final n = posts.length;
+  showToast(
+    context,
+    n == 1 ? 'Post deleted' : '$n posts deleted',
+    actionLabel: 'Undo',
+    duration: const Duration(seconds: 6),
+    onAction: () async {
+      for (final post in posts) {
+        await db.insert(post);
+      }
+      onChange?.call();
+    },
+    onClosed: () {
+      for (final post in posts) {
+        ImageStore.instance.remove(post.url);
+      }
+    },
+  );
 }
 
 /// Deletes [post] straight away and offers Undo for a few seconds.
@@ -130,6 +191,7 @@ Future<void> showPostActions(
   PostDb db,
   SavedPost post, {
   required VoidCallback onChange,
+  VoidCallback? onSelect,
 }) async {
   final action = await showCreamSheet<String>(
     context,
@@ -149,6 +211,13 @@ Future<void> showPostActions(
           leading: Icons.folder_outlined,
           onTap: () => Navigator.pop(c, 'move'),
         ),
+        if (onSelect != null)
+          _row(
+            c,
+            label: 'Select posts',
+            leading: Icons.check_circle_outline,
+            onTap: () => Navigator.pop(c, 'select'),
+          ),
         _row(
           c,
           label: 'Delete',
@@ -165,6 +234,8 @@ Future<void> showPostActions(
         Uri.parse(post.url),
         mode: LaunchMode.externalApplication,
       );
+    case 'select':
+      onSelect?.call();
     case 'move':
       if (await movePost(context, db, post) != null) onChange();
     case 'delete':

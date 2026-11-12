@@ -11,10 +11,14 @@ class PostGrid extends StatelessWidget {
     required this.posts,
     required this.onTap,
     this.onLongPress,
+    this.selected,
   });
   final List<SavedPost> posts;
   final void Function(SavedPost) onTap;
   final void Function(SavedPost)? onLongPress;
+
+  /// Ids of the selected posts while selecting; null when not selecting.
+  final Set<int>? selected;
 
   @override
   Widget build(BuildContext context) => SliverGrid.builder(
@@ -28,6 +32,7 @@ class PostGrid extends StatelessWidget {
     itemBuilder: (_, i) => PostTile(
       post: posts[i],
       onTap: () => onTap(posts[i]),
+      selected: selected?.contains(posts[i].id),
       onLongPress: onLongPress == null ? null : () => onLongPress!(posts[i]),
     ),
   );
@@ -40,10 +45,14 @@ class PostTile extends StatelessWidget {
     required this.onTap,
     this.onLongPress,
     this.heroPrefix = '',
+    this.selected,
   });
   final SavedPost post;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// Whether this post is ticked; null hides the tick circle.
+  final bool? selected;
 
   /// Makes the open animation tag unique when a post shows twice on a screen.
   final String heroPrefix;
@@ -68,6 +77,28 @@ class PostTile extends StatelessWidget {
                 tag: 'post-$heroPrefix${post.url}',
                 child: PostImage(post: post, cacheWidth: 480),
               ),
+              if (selected == true) Container(color: const Color(0x66000000)),
+              if (selected != null)
+                Positioned(
+                  top: context.s(10),
+                  right: context.s(10),
+                  child: Container(
+                    width: context.s(28),
+                    height: context.s(28),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected! ? Cream.ink : const Color(0x66000000),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: selected!
+                        ? Icon(
+                            Icons.check,
+                            size: context.s(18),
+                            color: Cream.bg,
+                          )
+                        : null,
+                  ),
+                ),
               Positioned(
                 left: context.s(8),
                 right: context.s(8),
