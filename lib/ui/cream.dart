@@ -1,42 +1,68 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 /// Cream Glass palette and type.
 class Cream {
-  static const bg = Color(0xFFF6F1E4);
-  static const ink = Color(0xFF1C1A14);
-  static const muted = Color(0xFF6B6450);
-  static const line = Color(0x1A1C1A14);
+  /// Set from the phone's light/dark setting by the app shell.
+  static bool dark = false;
+
+  static Color get bg =>
+      dark ? const Color(0xFF12100A) : const Color(0xFFF6F1E4);
+  static Color get ink =>
+      dark ? const Color(0xFFF3EDDC) : const Color(0xFF1C1A14);
+  static Color get muted =>
+      dark ? const Color(0xFFADA48B) : const Color(0xFF6B6450);
+  static Color get line =>
+      dark ? const Color(0x24F3EDDC) : const Color(0x1A1C1A14);
   static const glow = Color(0xFF6B5A12);
 
-  /// Milky cream glass for captions over photos, so dark text stays readable.
-  static const frost = LiquidGlassSettings(
-    glassColor: Color(0xB3F6F1E4),
-    blur: 14,
-    frost: 0.4,
-  );
+  /// Fill and edge of static frosted panels.
+  static Color get frostFill =>
+      dark ? const Color(0xC71F1B12) : const Color(0xB3FFFCF2);
+  static Color get frostEdge =>
+      dark ? const Color(0x24FFFFFF) : const Color(0xB3FFFFFF);
 
-  /// Bars and buttons that sit on the cream ground: whiter and frosted so
-  /// they read as raised glass instead of disappearing into the page.
-  static const bar = LiquidGlassSettings(
-    glassColor: Color(0x99FFFFFF),
+  /// Caption panels that sit on top of photos.
+  static Color get captionFill =>
+      dark ? const Color(0xD914120C) : const Color(0xD9F6F1E4);
+
+  /// Text boxes and round buttons.
+  static Color get field =>
+      dark ? const Color(0x1FFFFFFF) : const Color(0x80FFFFFF);
+  static Color get button =>
+      dark ? const Color(0xCC2A2518) : const Color(0xCCFFFFFF);
+
+  /// Shown behind a picture while it loads.
+  static Color get placeholder =>
+      dark ? const Color(0xFF242015) : const Color(0xFFEFE6C8);
+
+  /// Milky glass for captions over photos, so text stays readable.
+  static LiquidGlassSettings get frost =>
+      LiquidGlassSettings(glassColor: captionFill, blur: 14, frost: 0.4);
+
+  /// Bars and buttons that sit on the page: frosted so they read as raised
+  /// glass instead of disappearing into it.
+  static LiquidGlassSettings get bar => LiquidGlassSettings(
+    glassColor: dark ? const Color(0x992A2518) : const Color(0x99FFFFFF),
     blur: 18,
     frost: 0.5,
     thickness: 24,
   );
 
-  /// Modal sheets: mostly opaque cream glass so text always reads.
-  static const sheet = LiquidGlassSettings(
-    glassColor: Color(0xD9F6F1E4),
+  /// Modal sheets: mostly opaque glass so text always reads.
+  static LiquidGlassSettings get sheet => LiquidGlassSettings(
+    glassColor: dark ? const Color(0xE61C180F) : const Color(0xD9F6F1E4),
     blur: 24,
     frost: 0.5,
     thickness: 30,
   );
 
   /// Large panels (collections, sections).
-  static const panel = LiquidGlassSettings(
-    glassColor: Color(0x4DFFFCF0),
+  static LiquidGlassSettings get panel => LiquidGlassSettings(
+    glassColor: dark ? const Color(0x59201C12) : const Color(0x4DFFFCF0),
     blur: 22,
     frost: 0.3,
     thickness: 30,
@@ -46,14 +72,14 @@ class Cream {
     BuildContext context, {
     double size = 12,
     FontWeight w = FontWeight.w500,
-    Color c = muted,
+    Color? c,
   }) {
     final s = context.s(size);
     return GoogleFonts.manrope(
       fontSize: s,
       fontWeight: w,
       letterSpacing: s * 0.22,
-      color: c,
+      color: c ?? muted,
     );
   }
 
@@ -61,11 +87,11 @@ class Cream {
     BuildContext context, {
     double size = 15,
     FontWeight w = FontWeight.w400,
-    Color c = ink,
+    Color? c,
   }) => GoogleFonts.manrope(
     fontSize: context.s(size),
     fontWeight: w,
-    color: c,
+    color: c ?? ink,
     height: 1.45,
   );
 
@@ -125,17 +151,28 @@ class CreamBackground extends StatelessWidget {
           child: Container(
             width: d,
             height: d,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [
-                  Color(0xFF14110A),
-                  Color(0xFF2E270B),
-                  Color(0xFF5A4B10),
-                  Color(0xB38C7A2A),
-                  Color(0x55D4BE5A),
-                  Color(0x00F6F1E4),
-                ],
+                // Light: a dark-gold core on cream. Dark: a lit gold core
+                // fading into near-black.
+                colors: Cream.dark
+                    ? const [
+                        Color(0xFFE2CB72),
+                        Color(0xFFB89A32),
+                        Color(0xFF7A6418),
+                        Color(0xB34A3D10),
+                        Color(0x55302809),
+                        Color(0x0012100A),
+                      ]
+                    : const [
+                        Color(0xFF14110A),
+                        Color(0xFF2E270B),
+                        Color(0xFF5A4B10),
+                        Color(0xB38C7A2A),
+                        Color(0x55D4BE5A),
+                        Color(0x00F6F1E4),
+                      ],
                 stops: [0.0, 0.2, 0.38, 0.55, 0.7, 1.0],
               ),
             ),
@@ -156,7 +193,7 @@ Future<T?> showCreamSheet<T>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Dismiss',
-    barrierColor: const Color(0x401C1A14),
+    barrierColor: const Color(0x66000000),
     transitionDuration: const Duration(milliseconds: 280),
     transitionBuilder: (_, anim, _, child) => SlideTransition(
       position: Tween(
@@ -266,10 +303,8 @@ class GlassIcon extends StatelessWidget {
     button: true,
     child: !live
         ? Material(
-            color: const Color(0xCCFFFFFF),
-            shape: const CircleBorder(
-              side: BorderSide(color: Color(0x14000000)),
-            ),
+            color: Cream.button,
+            shape: CircleBorder(side: BorderSide(color: Cream.line)),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: onTap,
@@ -302,20 +337,20 @@ class Frost extends StatelessWidget {
     required this.child,
     this.radius = 28,
     this.padding,
-    this.color = const Color(0xB3FFFCF2),
+    this.color,
   });
   final Widget child;
   final double radius;
   final EdgeInsetsGeometry? padding;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: padding,
     decoration: BoxDecoration(
-      color: color,
+      color: color ?? Cream.frostFill,
       borderRadius: BorderRadius.circular(context.s(radius)),
-      border: Border.all(color: const Color(0xB3FFFFFF)),
+      border: Border.all(color: Cream.frostEdge),
       boxShadow: const [
         BoxShadow(
           color: Color(0x14403200),
@@ -355,7 +390,7 @@ Future<String?> showCreamInput(
             hintText: hint,
             hintStyle: Cream.body(c, size: 16, c: Cream.muted),
             filled: true,
-            fillColor: const Color(0x80FFFFFF),
+            fillColor: Cream.field,
             contentPadding: EdgeInsets.symmetric(
               horizontal: c.s(18),
               vertical: c.s(18),
@@ -371,4 +406,88 @@ Future<String?> showCreamInput(
       ],
     ),
   );
+}
+
+OverlayEntry? _toastEntry;
+Timer? _toastTimer;
+
+/// Small message pill above the bottom bar, with an optional action such as
+/// Undo. Drawn in the app's overlay, so it stays up across screen changes.
+/// [onClosed] runs when it goes away without the action being tapped.
+void showToast(
+  BuildContext context,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+  VoidCallback? onClosed,
+  Duration duration = const Duration(seconds: 2),
+}) {
+  final overlay = Navigator.of(context, rootNavigator: true).overlay;
+  if (overlay == null) return;
+  _dismissToast();
+  var acted = false;
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (c) => Positioned(
+      left: c.gutter,
+      right: c.gutter,
+      bottom: MediaQuery.viewPaddingOf(c).bottom + c.s(92),
+      child: Center(
+        child: Material(
+          color: Cream.ink,
+          elevation: 6,
+          shape: const StadiumBorder(),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: c.s(20),
+              vertical: c.s(actionLabel == null ? 14 : 6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Cream.body(c, size: 14, c: Cream.bg),
+                  ),
+                ),
+                if (actionLabel != null)
+                  TextButton(
+                    onPressed: () {
+                      acted = true;
+                      _dismissToast();
+                      onAction?.call();
+                    },
+                    child: Text(
+                      actionLabel.toUpperCase(),
+                      style: Cream.label(c, size: 13, c: Cream.bg),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  _toastEntry = entry;
+  _toastClosed = () {
+    if (!acted) onClosed?.call();
+  };
+  overlay.insert(entry);
+  _toastTimer = Timer(duration, _dismissToast);
+}
+
+VoidCallback? _toastClosed;
+
+void _dismissToast() {
+  _toastTimer?.cancel();
+  _toastTimer = null;
+  _toastEntry?.remove();
+  _toastEntry = null;
+  final closed = _toastClosed;
+  _toastClosed = null;
+  closed?.call();
 }

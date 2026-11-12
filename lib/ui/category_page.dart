@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../data/post_db.dart';
 import 'cream.dart';
+import 'post_actions.dart';
 import 'post_detail.dart';
 import 'post_tile.dart';
 
@@ -182,7 +183,16 @@ class _CategoryPageState extends State<CategoryPage> {
                   SliverPadding(
                     // Room at the bottom so the last row clears the search bar.
                     padding: EdgeInsets.fromLTRB(g, 0, g, context.s(120)),
-                    sliver: PostGrid(posts: _posts, onTap: _open),
+                    sliver: PostGrid(
+                      posts: _posts,
+                      onTap: _open,
+                      onLongPress: (p) => showPostActions(
+                        context,
+                        widget.db,
+                        p,
+                        onChange: _load,
+                      ),
+                    ),
                   ),
               ],
             ),

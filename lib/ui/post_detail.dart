@@ -9,6 +9,7 @@ import '../services/image_store.dart';
 import '../services/metadata.dart';
 import 'category_page.dart';
 import 'cream.dart';
+import 'post_actions.dart';
 import 'post_tile.dart';
 
 /// Turns a mentioned link, domain, @handle or product name into a URL.
@@ -24,9 +25,15 @@ Uri linkTarget(String link) {
 }
 
 class PostDetailPage extends StatefulWidget {
-  const PostDetailPage({super.key, required this.db, required this.post});
+  const PostDetailPage({
+    super.key,
+    required this.db,
+    required this.post,
+    this.heroPrefix = '',
+  });
   final PostDb db;
   final SavedPost post;
+  final String heroPrefix;
 
   @override
   State<PostDetailPage> createState() => _PostDetailPageState();
@@ -67,22 +74,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: Cream.body(context, size: 14, c: Cream.bg)),
-        backgroundColor: Cream.ink,
-        behavior: SnackBarBehavior.floating,
-        shape: const StadiumBorder(),
-        margin: EdgeInsets.fromLTRB(
-          context.gutter,
-          0,
-          context.gutter,
-          context.s(100),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (mounted) showToast(context, msg);
   }
 
   /// Fetches the post again and redoes the AI work. Keeps the collection
@@ -138,110 +130,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
     if (mounted) setState(() => post = updated);
   }
 
-  static const _newCollection = '\u0000new';
-
   Future<void> _move() async {
-    final all = await widget.db.categories();
-    if (!mounted) return;
-    var cat = await showCreamSheet<String>(
-      context,
-      title: 'Move to',
-      builder: (c) => ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(c).height * 0.6,
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          shrinkWrap: true,
-          children: [
-            InkWell(
-              onTap: () => Navigator.pop(c, _newCollection),
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: c.s(15)),
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Cream.line)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.add, color: Cream.ink, size: c.s(20)),
-                    SizedBox(width: c.s(10)),
-                    Text(
-                      'New collection',
-                      style: Cream.body(c, size: 17, w: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            for (final cat in all)
-              InkWell(
-                onTap: () => Navigator.pop(c, cat),
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: c.s(15)),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Cream.line)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          cat,
-                          style: Cream.body(
-                            c,
-                            size: 17,
-                            w: cat == post.category
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                      if (cat == post.category)
-                        Icon(Icons.check, color: Cream.ink, size: c.s(20)),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (cat == null || !mounted) return;
-    if (cat == _newCollection) {
-      final name = (await showCreamInput(
-        context,
-        title: 'New collection',
-        action: 'Create and move',
-        hint: 'Collection name',
-      ))?.trim();
-      if (name == null || name.isEmpty) return;
-      await widget.db.addCollection(name);
-      cat = name;
-    }
-    final updated = post.copyWith(category: cat);
-    await widget.db.update(updated);
-    setState(() => post = updated);
+    final updated = await movePost(context, widget.db, post);
+    if (updated != null && mounted) setState(() => post = updated);
   }
 
   Future<void> _delete() async {
-    final ok = await showCreamSheet<bool>(
-      context,
-      title: 'Delete this post?',
-      builder: (c) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'It is removed from PostVault only, not from Instagram.',
-            style: Cream.body(c, c: Cream.muted),
-          ),
-          SizedBox(height: c.s(20)),
-          InkPill(label: 'Delete', onTap: () => Navigator.pop(c, true)),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    await widget.db.delete(post.id!);
-    await ImageStore.instance.remove(post.url);
-    if (mounted) Navigator.pop(context);
+    final nav = Navigator.of(context);
+    await deleteWithUndo(nav.context, widget.db, post);
+    nav.pop();
   }
 
   Widget _section(String title, Widget child) => Frost(
@@ -329,15 +226,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
-                                      Container(color: const Color(0xFFEFE6C8)),
-                                      PostImage(post: post, cacheWidth: 1080),
+                                      Container(color: Cream.placeholder),
+                                      Hero(
+                                        tag:
+                                            'post-${widget.heroPrefix}${post.url}',
+                                        child: PostImage(
+                                          post: post,
+                                          cacheWidth: 1080,
+                                        ),
+                                      ),
                                       Positioned(
                                         left: context.s(14),
                                         right: context.s(14),
                                         bottom: context.s(14),
                                         child: Frost(
                                           radius: 26,
-                                          color: const Color(0xD9F6F1E4),
+                                          color: Cream.captionFill,
                                           padding: EdgeInsets.all(
                                             context.s(18),
                                           ),
@@ -440,7 +344,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                             decoration: BoxDecoration(
                                               border: i == post.links.length - 1
                                                   ? null
-                                                  : const Border(
+                                                  : Border(
                                                       bottom: BorderSide(
                                                         color: Cream.line,
                                                       ),

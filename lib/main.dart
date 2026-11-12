@@ -17,6 +17,7 @@ import 'services/image_store.dart';
 import 'services/metadata.dart';
 import 'ui/category_page.dart';
 import 'ui/cream.dart';
+import 'ui/post_actions.dart';
 import 'ui/post_detail.dart';
 import 'ui/post_tile.dart';
 
@@ -44,12 +45,24 @@ class PostVaultApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'PostVault',
     debugShowCheckedModeBanner: false,
-    themeMode: ThemeMode.light,
+    themeMode: ThemeMode.system,
     theme: ThemeData(
       colorSchemeSeed: Cream.glow,
-      scaffoldBackgroundColor: Cream.bg,
+      scaffoldBackgroundColor: const Color(0xFFF6F1E4),
       useMaterial3: true,
     ),
+    darkTheme: ThemeData(
+      colorSchemeSeed: Cream.glow,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF12100A),
+      useMaterial3: true,
+    ),
+    // Follow the phone's light/dark setting. The key rebuilds every screen
+    // with the new palette when it changes.
+    builder: (context, child) {
+      Cream.dark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+      return KeyedSubtree(key: ValueKey(Cream.dark), child: child!);
+    },
     home: HomePage(db: db),
   );
 }
@@ -67,6 +80,9 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<List<SharedMediaFile>>? _shareSub;
   Timer? _debounce;
   List<SavedPost> _results = [];
+
+  /// Every post, newest first: feeds the covers and the recent row.
+  List<SavedPost> _all = [];
   Map<String, int> _counts = {};
   int _processing = 0;
 
@@ -99,12 +115,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _refresh() async {
     final counts = await widget.db.categoryCounts();
+    final all = await widget.db.search();
     final results = _searching
         ? await widget.db.search(query: _search.text)
         : <SavedPost>[];
     if (!mounted) return;
     setState(() {
       _counts = counts;
+      _all = all;
       _results = results;
     });
   }
@@ -125,22 +143,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: Cream.body(context, size: 14, c: Cream.bg)),
-        backgroundColor: Cream.ink,
-        behavior: SnackBarBehavior.floating,
-        shape: const StadiumBorder(),
-        margin: EdgeInsets.fromLTRB(
-          context.gutter,
-          0,
-          context.gutter,
-          context.s(100),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (mounted) showToast(context, msg);
   }
 
   Future<void> _savePost(String rawUrl) async {
@@ -242,7 +245,7 @@ class _HomePageState extends State<HomePage> {
               hintText: hasOwn ? 'Paste a new key to replace it' : 'gsk_…',
               hintStyle: Cream.body(c, size: 16, c: Cream.muted),
               filled: true,
-              fillColor: const Color(0x80FFFFFF),
+              fillColor: Cream.field,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: c.s(18),
                 vertical: c.s(18),
@@ -318,7 +321,7 @@ class _HomePageState extends State<HomePage> {
               hintText: 'Instagram, TikTok, YouTube or X link',
               hintStyle: Cream.body(c, size: 16, c: Cream.muted),
               filled: true,
-              fillColor: const Color(0x80FFFFFF),
+              fillColor: Cream.field,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: c.s(18),
                 vertical: c.s(18),
@@ -395,15 +398,6 @@ class _HomePageState extends State<HomePage> {
                               '${_searching ? _results.length : total}',
                               style: Cream.display(context),
                             ),
-                            const Spacer(),
-                            if (_processing > 0)
-                              Padding(
-                                padding: EdgeInsets.only(bottom: context.s(8)),
-                                child: Text(
-                                  'SORTING…',
-                                  style: Cream.label(context, size: 11),
-                                ),
-                              ),
                           ],
                         ),
                         SizedBox(
@@ -426,11 +420,12 @@ class _HomePageState extends State<HomePage> {
                             posts: _results,
                             onTap: (p) =>
                                 _push(PostDetailPage(db: widget.db, post: p)),
+                            onLongPress: _actions,
                           ),
                         )
                 else
                   SliverPadding(
-                    padding: EdgeInsets.fromLTRB(g, 0, g, context.s(120)),
+                    padding: EdgeInsets.fromLTRB(g, 0, g, 0),
                     sliver: SliverToBoxAdapter(
                       child: _counts.isEmpty
                           ? _message(
@@ -440,6 +435,9 @@ class _HomePageState extends State<HomePage> {
                           : _collections(),
                     ),
                   ),
+                if (!_searching && (_all.isNotEmpty || _processing > 0))
+                  SliverToBoxAdapter(child: _recent()),
+                SliverToBoxAdapter(child: SizedBox(height: context.s(120))),
               ],
             ),
             Positioned(
@@ -510,6 +508,92 @@ class _HomePageState extends State<HomePage> {
     ),
   );
 
+  void _actions(SavedPost p) =>
+      showPostActions(context, widget.db, p, onChange: _refresh);
+
+  /// Up to three overlapping thumbnails of a collection's newest posts.
+  Widget _covers(String category) {
+    final posts = _all.where((p) => p.category == category).take(3).toList();
+    final size = context.s(38);
+    final step = context.s(14);
+    return SizedBox(
+      width: size + step * 2,
+      height: size,
+      child: Stack(
+        children: [
+          for (var i = posts.length - 1; i >= 0; i--)
+            Positioned(
+              left: i * step,
+              child: Container(
+                width: size,
+                height: size,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Cream.placeholder,
+                  borderRadius: BorderRadius.circular(context.s(11)),
+                  border: Border.all(color: Cream.frostEdge, width: 1.5),
+                ),
+                child: PostImage(post: posts[i], cacheWidth: 120),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Newest saves in a sideways row, led by a placeholder while a shared
+  /// post is still being fetched and sorted.
+  Widget _recent() {
+    final g = context.gutter;
+    final posts = _all.take(10).toList();
+    final w = context.s(150);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(g, context.s(28), g, context.s(12)),
+          child: Text(
+            'RECENTLY SAVED',
+            style: Cream.label(context, size: 13, c: Cream.ink),
+          ),
+        ),
+        SizedBox(
+          height: w / 0.72,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: g),
+            itemCount: posts.length + (_processing > 0 ? 1 : 0),
+            separatorBuilder: (_, _) => SizedBox(width: context.s(12)),
+            itemBuilder: (_, i) {
+              if (_processing > 0) {
+                if (i == 0) {
+                  return SizedBox(width: w, child: const SavingCard());
+                }
+                i--;
+              }
+              final p = posts[i];
+              return SizedBox(
+                width: w,
+                child: PostTile(
+                  post: p,
+                  heroPrefix: 'recent-',
+                  onTap: () => _push(
+                    PostDetailPage(
+                      db: widget.db,
+                      post: p,
+                      heroPrefix: 'recent-',
+                    ),
+                  ),
+                  onLongPress: () => _actions(p),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _collections() {
     final entries = _counts.entries.toList();
     return Center(
@@ -542,13 +626,17 @@ class _HomePageState extends State<HomePage> {
                     decoration: BoxDecoration(
                       border: i == entries.length - 1
                           ? null
-                          : const Border(bottom: BorderSide(color: Cream.line)),
+                          : Border(bottom: BorderSide(color: Cream.line)),
                     ),
                     child: Row(
                       children: [
+                        _covers(entries[i].key),
+                        SizedBox(width: context.s(14)),
                         Expanded(
                           child: Text(
                             entries[i].key,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: Cream.body(context, size: 18),
                           ),
                         ),

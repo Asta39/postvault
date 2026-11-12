@@ -6,9 +6,15 @@ import 'cream.dart';
 
 /// Grid of post tiles that adapts its column count to the screen.
 class PostGrid extends StatelessWidget {
-  const PostGrid({super.key, required this.posts, required this.onTap});
+  const PostGrid({
+    super.key,
+    required this.posts,
+    required this.onTap,
+    this.onLongPress,
+  });
   final List<SavedPost> posts;
   final void Function(SavedPost) onTap;
+  final void Function(SavedPost)? onLongPress;
 
   @override
   Widget build(BuildContext context) => SliverGrid.builder(
@@ -19,15 +25,28 @@ class PostGrid extends StatelessWidget {
       childAspectRatio: 0.72,
     ),
     itemCount: posts.length,
-    itemBuilder: (_, i) =>
-        PostTile(post: posts[i], onTap: () => onTap(posts[i])),
+    itemBuilder: (_, i) => PostTile(
+      post: posts[i],
+      onTap: () => onTap(posts[i]),
+      onLongPress: onLongPress == null ? null : () => onLongPress!(posts[i]),
+    ),
   );
 }
 
 class PostTile extends StatelessWidget {
-  const PostTile({super.key, required this.post, required this.onTap});
+  const PostTile({
+    super.key,
+    required this.post,
+    required this.onTap,
+    this.onLongPress,
+    this.heroPrefix = '',
+  });
   final SavedPost post;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  /// Makes the open animation tag unique when a post shows twice on a screen.
+  final String heroPrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +56,18 @@ class PostTile extends StatelessWidget {
     return RepaintBoundary(
       child: GestureDetector(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: ClipRSuperellipse(
           borderRadius: BorderRadius.circular(context.s(28)),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Container(color: const Color(0xFFEFE6C8)),
-              PostImage(post: post, cacheWidth: 480),
+              Container(color: Cream.placeholder),
+              // The picture grows into the post screen when opened.
+              Hero(
+                tag: 'post-$heroPrefix${post.url}',
+                child: PostImage(post: post, cacheWidth: 480),
+              ),
               Positioned(
                 left: context.s(8),
                 right: context.s(8),
@@ -51,9 +75,9 @@ class PostTile extends StatelessWidget {
                 // Static frosted panel: same look as glass, far cheaper to scroll.
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xD9F6F1E4),
+                    color: Cream.captionFill,
                     borderRadius: BorderRadius.circular(context.s(20)),
-                    border: Border.all(color: const Color(0x99FFFFFF)),
+                    border: Border.all(color: Cream.frostEdge),
                   ),
                   padding: EdgeInsets.fromLTRB(
                     context.s(12),
@@ -122,4 +146,44 @@ class PostImage extends StatelessWidget {
       errorBuilder: (_, _, _) => const SizedBox(),
     );
   }
+}
+
+/// Placeholder shown while a newly shared post is fetched and sorted.
+class SavingCard extends StatefulWidget {
+  const SavingCard({super.key});
+
+  @override
+  State<SavingCard> createState() => _SavingCardState();
+}
+
+class _SavingCardState extends State<SavingCard>
+    with SingleTickerProviderStateMixin {
+  late final _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: Tween(begin: 0.45, end: 1.0).animate(_pulse),
+    child: Container(
+      decoration: BoxDecoration(
+        color: Cream.placeholder,
+        borderRadius: BorderRadius.circular(context.s(28)),
+        border: Border.all(color: Cream.frostEdge),
+      ),
+      padding: EdgeInsets.all(context.s(16)),
+      alignment: Alignment.bottomLeft,
+      child: Text(
+        'SAVING AND\nSORTING…',
+        style: Cream.label(context, size: 10, c: Cream.ink),
+      ),
+    ),
+  );
 }
