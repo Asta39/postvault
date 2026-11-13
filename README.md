@@ -55,13 +55,13 @@ again by typing what it was about.
 
 ## Install
 
-1. Download `PostVault-v1.1.0.apk` from the [latest release](https://github.com/Asta39/postvault/releases/latest).
+1. Download `postvault-v1.2.0.apk` from the [latest release](https://github.com/Asta39/postvault/releases/latest).
 2. Open it on your Android phone and allow installing from this source when asked.
 3. Open Instagram, tap **Share** on a post, and choose **PostVault**.
 
-Updating from v1.0.0? Install over it; your saved posts are kept.
+**Updating from v1.1.0 or older:** v1.2.0 is signed with a new permanent key, so Android will not install it over an older version. In the old app open **Settings → Backup → Export** first, uninstall it, install v1.2.0, then **Import** the backup. This is a one-time step.
 
-Requires Android 5.0 (API 21) or newer.
+Requires Android 7.0 (API 24) or newer.
 
 ### Turn on AI sorting
 

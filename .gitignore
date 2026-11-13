@@ -44,3 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 secrets.json
+
+# Signing material never belongs in the repo
+*.jks
+*.keystore
+*.p12
+key.properties
+*-release.properties
