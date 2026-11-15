@@ -10,7 +10,27 @@
   const SKIP = /^(download|verify|ai sorting|turn on ai sorting|install)\b/i;
 
   if (/Android/i.test(navigator.userAgent)) document.documentElement.classList.add("is-android");
-  if (window.liquidGlass) document.querySelectorAll(".glass-pill").forEach((p) => window.liquidGlass(p));
+  // Same optics as the portfolio's frosted GlassToolbar.
+  if (window.liquidGlass) document.querySelectorAll(".glass-pill").forEach((p) => window.liquidGlass(p, { blur: 2, saturation: 1.6, dispersion: 0.12, specular: 0.2, lightAngle: -60 }));
+
+  // Menu: the burger opens a full panel; Escape, a link or the burger closes it.
+  const menu = document.getElementById("menu");
+  const menuBtn = document.getElementById("menu-btn");
+  if (menu && menuBtn) {
+    const setOpen = (open) => {
+      document.body.classList.toggle("menu-open", open);
+      menuBtn.setAttribute("aria-expanded", String(open));
+      menuBtn.setAttribute("aria-label", open ? "Close menu" : "Menu");
+      menu.setAttribute("aria-hidden", String(!open));
+      menu.inert = !open;
+      if (open) menu.querySelector("a")?.focus({ preventScroll: true });
+    };
+    menuBtn.addEventListener("click", () => setOpen(!document.body.classList.contains("menu-open")));
+    menu.addEventListener("click", (e) => { if (e.target.closest("a")) setOpen(false); });
+    addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.body.classList.contains("menu-open")) { setOpen(false); menuBtn.focus(); }
+    });
+  }
 
   function cached() {
     try {

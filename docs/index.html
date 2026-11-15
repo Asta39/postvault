@@ -24,14 +24,32 @@
 <body>
 
 <header class="nav">
-  <nav class="nav-pill glass-pill" aria-label="Main">
-    <a class="logo" href="#top" aria-label="PostVault, back to top"><img src="icon.png" alt="" width="22" height="22"></a>
-    <span class="nav-sep" aria-hidden="true"></span>
-    <a class="nav-link nav-features" href="#features">Features</a>
-    <a class="nav-link" href="#changelog">Changelog</a>
-    <a class="nav-get" href="https://github.com/Asta39/postvault/releases/latest" data-download>Get</a>
-  </nav>
+  <div class="toolbar glass-pill" role="toolbar" aria-label="Site">
+    <a class="tb-btn tb-icon" href="#top" aria-label="PostVault, back to top"><img src="icon.png" alt="" width="24" height="24"></a>
+    <a class="tb-btn" href="https://github.com/Asta39/postvault/releases/latest" data-download aria-label="Download PostVault">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>
+    </a>
+    <span class="tb-sep" role="separator" aria-orientation="vertical"></span>
+    <button class="tb-btn tb-menu" type="button" id="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+      <span class="burger" aria-hidden="true"><span></span><span></span></span>
+    </button>
+  </div>
 </header>
+
+<div class="menu" id="menu" aria-hidden="true" inert>
+  <nav class="menu-inner" aria-label="Main">
+    <ul class="menu-list">
+      <li><a href="#features"><span class="menu-n">01</span>Features</a></li>
+      <li><a href="#install"><span class="menu-n">02</span>Install</a></li>
+      <li><a href="#changelog"><span class="menu-n">03</span>Changelog</a></li>
+      <li><a href="https://github.com/Asta39/postvault/releases/latest" data-download><span class="menu-n">04</span>Download</a></li>
+    </ul>
+    <ul class="menu-links">
+      <li><a href="https://rookieenough.github.io/Orion-Data/app/?id=postvault" rel="noopener">Orion Store ↗</a></li>
+      <li><a href="https://github.com/Asta39/postvault" rel="noopener">GitHub ↗</a></li>
+    </ul>
+  </nav>
+</div>
 
 <main id="top">
 
