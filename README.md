@@ -11,6 +11,8 @@ pulls out every link it mentions, and makes it searchable by keyword.
 
 [![Download APK](https://img.shields.io/github/v/release/Asta39/postvault?label=Download%20APK&style=for-the-badge&color=1C1A14)](https://github.com/Asta39/postvault/releases/latest)
 
+<a href="https://rookieenough.github.io/Orion-Data/app/?id=postvault"><img src="https://raw.githubusercontent.com/RookieEnough/Orion-Store/refs/heads/main/assets/orion-badge.png" alt="Get it on Orion Store" height="60" /></a>
+
 ![Platform](https://img.shields.io/badge/platform-Android-6B5A12?style=flat-square)
 ![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B?style=flat-square&logo=flutter&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-6B6450?style=flat-square)
