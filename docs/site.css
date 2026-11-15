@@ -22,15 +22,14 @@ a { color: inherit; }
 /* nav: the small centred liquid-glass pill from the portfolio */
 .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 60; padding: .875rem var(--pad); padding-top: max(.875rem, env(safe-area-inset-top)); display: flex; justify-content: center; pointer-events: none; }
 .glass-pill { pointer-events: auto; position: relative; isolation: isolate; height: 2.5rem; border-radius: 999px; display: inline-flex; align-items: center; color: var(--ink); }
-.nav-pill { padding: 0 .3rem 0 .75rem; gap: .2rem; }
-.logo { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; font-size: .9375rem; letter-spacing: -.02em; text-decoration: none; padding-right: .5rem; }
+.nav-pill { padding: 0 .3rem 0 .55rem; gap: .2rem; }
+.logo { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; font-size: .9375rem; letter-spacing: -.02em; text-decoration: none; padding-right: .35rem; }
 .logo img { width: 1.375rem; height: 1.375rem; border-radius: .34rem; }
 .nav-sep { width: 1px; height: 1rem; background: rgba(28, 26, 20, .18); margin-right: .25rem; }
 .nav-link { display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .7rem; border-radius: 999px; font-size: .8125rem; font-weight: 500; text-decoration: none; color: var(--muted); transition: background .2s, color .2s; }
 .nav-get { display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .9rem; margin-left: .25rem; border-radius: 999px; background: var(--ink); color: #fff; font-size: .8125rem; font-weight: 600; text-decoration: none; transition: transform .15s; }
 .nav-get:active { transform: scale(.96); }
 @media (hover: hover) { .nav-link:hover { background: rgba(28, 26, 20, .07); color: var(--ink); } }
-@media (max-width: 400px) { .nav-features { display: none; } }
 
 /* liquid glass layers, filled in by glass.js */
 [data-glass] > .glass-backdrop, [data-glass] > .glass-tint, [data-glass] > .glass-rim { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; }
