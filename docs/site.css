@@ -79,10 +79,38 @@ section { display: flex; flex-direction: column; align-items: center; text-align
   html:not(.is-android) .cta-screen { display: flex; }
 }
 
-/* screenshots */
-.phone { width: min(17rem, 42vw); border-radius: clamp(1.25rem, 4vw, 2.25rem); border: .3rem solid #14120d; background: #14120d; box-shadow: 0 2.5rem 5rem -2rem rgba(28, 26, 20, .45), 0 0 0 1px rgba(28, 26, 20, .08); }
+/* screenshots in iPhone-style frames. Everything is sized in em off the
+   frame's own font-size, so the bezel, island and status bar scale together. */
+.device {
+  --w: min(17rem, 42vw);
+  font-size: calc(var(--w) / 20);
+  width: var(--w); flex: none; position: relative;
+  padding: .55em; border-radius: 3.1em;
+  background: linear-gradient(145deg, #3a3833, #1b1a17 40%, #2c2a26 70%, #121110);
+  box-shadow: inset 0 0 0 .08em rgba(255,255,255,.18), inset 0 0 0 .3em #0b0a08,
+              0 2.5em 5em -2em rgba(28, 26, 20, .5), 0 .6em 1.2em -.6em rgba(28, 26, 20, .35);
+}
+.device::before { /* side buttons */
+  content: ""; position: absolute; right: -.18em; top: 9em; width: .2em; height: 3.2em; border-radius: 0 .2em .2em 0; background: #2a2824;
+  box-shadow: calc(-20em - .16em) -2.6em 0 0 #2a2824, calc(-20em - .16em) 1.4em 0 0 #2a2824;
+}
+.screen { position: relative; overflow: hidden; border-radius: 2.6em; background: #11100b; padding-top: 2.6em; }
+.screen::before { /* Dynamic Island */
+  content: ""; position: absolute; z-index: 2; top: .55em; left: 50%; width: 5.6em; height: 1.65em; transform: translateX(-50%); border-radius: 1em; background: #000;
+}
+.screen::after { /* home indicator */
+  content: ""; position: absolute; z-index: 2; bottom: .45em; left: 50%; width: 6.6em; height: .26em; transform: translateX(-50%); border-radius: 1em; background: rgba(255,255,255,.75);
+}
+.screen img { width: 100%; height: auto; }
+.status { position: absolute; z-index: 1; top: 0; left: 0; right: 0; height: 2.6em; display: flex; align-items: center; justify-content: space-between; padding: .2em 1.55em 0 2.1em; color: #fff; }
+.clock { font-weight: 600; font-size: .78em; letter-spacing: -.01em; }
+.status svg { width: 3.4em; height: .6em; }
+
 .phones { display: flex; justify-content: center; gap: clamp(1rem, 4vw, 3rem); margin-top: clamp(1.5rem, 4vw, 3rem); }
-.hero-phone { width: min(21rem, 74vw); margin-top: clamp(2.5rem, 6vw, 4.5rem); border-bottom: 0; border-radius: clamp(2rem, 5vw, 2.75rem) clamp(2rem, 5vw, 2.75rem) 0 0; aspect-ratio: 451 / 760; object-fit: cover; object-position: top; }
+/* hero phone rises out of the section edge */
+.hero-device { --w: min(21rem, 74vw); margin-top: clamp(2.5rem, 6vw, 4.5rem); padding-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.hero-device .screen { border-bottom-left-radius: 0; border-bottom-right-radius: 0; max-height: 32em; }
+.hero-device .screen::after { display: none; }
 
 /* install */
 .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; width: 100%; max-width: 62rem; margin-top: 1.5rem; text-align: left; }

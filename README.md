@@ -6,6 +6,8 @@
 
 **Your Instagram saves, sorted and searchable.**
 
+**[asta39.github.io/postvault](https://asta39.github.io/postvault/)**
+
 Share any Instagram post to PostVault. AI files it into a collection, writes a short description,
 pulls out every link it mentions, and makes it searchable by keyword.
 
@@ -22,10 +24,10 @@ pulls out every link it mentions, and makes it searchable by keyword.
 ---
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="23%" alt="Home: saved count and collections with covers" />
-  <img src="docs/screenshots/category.png" width="23%" alt="A collection of saved posts" />
-  <img src="docs/screenshots/post.png" width="23%" alt="A saved post" />
-  <img src="docs/screenshots/post_details.png" width="23%" alt="AI description, your note and extracted links" />
+  <img src="docs/screenshots/hd/home.jpg" width="23%" alt="Home: saved count and collections with covers" />
+  <img src="docs/screenshots/hd/category.jpg" width="23%" alt="A collection of saved posts" />
+  <img src="docs/screenshots/hd/post.jpg" width="23%" alt="A saved post" />
+  <img src="docs/screenshots/hd/post_details.jpg" width="23%" alt="AI description, your note and extracted links" />
 </p>
 
 ## Why
@@ -49,10 +51,10 @@ again by typing what it was about.
 - **Private by default.** Posts are stored on the device in SQLite. There is no account and no server.
 
 <p align="center">
-  <img src="docs/screenshots/recent.png" width="23%" alt="Recently saved row" />
-  <img src="docs/screenshots/actions.png" width="23%" alt="Long-press actions" />
-  <img src="docs/screenshots/move.png" width="23%" alt="Move a post or create a collection" />
-  <img src="docs/screenshots/settings.png" width="23%" alt="AI key and backup settings" />
+  <img src="docs/screenshots/hd/recent.jpg" width="23%" alt="Recently saved row" />
+  <img src="docs/screenshots/hd/actions.jpg" width="23%" alt="Long-press actions" />
+  <img src="docs/screenshots/hd/move.jpg" width="23%" alt="Move a post or create a collection" />
+  <img src="docs/screenshots/hd/settings.jpg" width="23%" alt="AI key and backup settings" />
 </p>
 
 ## Install
