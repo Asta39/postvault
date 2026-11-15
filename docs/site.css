@@ -1,0 +1,116 @@
+/* PostVault download site. Everything is sized in rem, and the root size grows
+   with the viewport, so the page scales from a phone up to a 4K TV. */
+:root {
+  --bg: #ffffff;
+  --panel: #f5f5f7;
+  --ink: #1c1a14;
+  --muted: #6e6b63;
+  --line: rgba(28, 26, 20, .1);
+  --gold: #8a7419;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
+  --pad: clamp(1.25rem, 5vw, 4rem);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: clamp(16px, 0.52vw + 10.5px, 44px); scroll-behavior: smooth; scroll-padding-top: 5rem; -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font: 400 1.0625rem/1.5 var(--font); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+:focus-visible { outline: .125rem solid var(--gold); outline-offset: .2rem; border-radius: .4rem; }
+
+/* nav: the small centred liquid-glass pill from the portfolio */
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 60; padding: .875rem var(--pad); padding-top: max(.875rem, env(safe-area-inset-top)); display: flex; justify-content: center; pointer-events: none; }
+.glass-pill { pointer-events: auto; position: relative; isolation: isolate; height: 2.5rem; border-radius: 999px; display: inline-flex; align-items: center; color: var(--ink); }
+.nav-pill { padding: 0 .3rem 0 .75rem; gap: .2rem; }
+.logo { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; font-size: .9375rem; letter-spacing: -.02em; text-decoration: none; padding-right: .5rem; }
+.logo img { width: 1.375rem; height: 1.375rem; border-radius: .34rem; }
+.nav-sep { width: 1px; height: 1rem; background: rgba(28, 26, 20, .18); margin-right: .25rem; }
+.nav-link { display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .7rem; border-radius: 999px; font-size: .8125rem; font-weight: 500; text-decoration: none; color: var(--muted); transition: background .2s, color .2s; }
+.nav-get { display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .9rem; margin-left: .25rem; border-radius: 999px; background: var(--ink); color: #fff; font-size: .8125rem; font-weight: 600; text-decoration: none; transition: transform .15s; }
+.nav-get:active { transform: scale(.96); }
+@media (hover: hover) { .nav-link:hover { background: rgba(28, 26, 20, .07); color: var(--ink); } }
+@media (max-width: 400px) { .nav-features { display: none; } }
+
+/* liquid glass layers, filled in by glass.js */
+[data-glass] > .glass-backdrop, [data-glass] > .glass-tint, [data-glass] > .glass-rim { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; }
+[data-glass] > .glass-backdrop { overflow: hidden; -webkit-backdrop-filter: blur(10px) saturate(1.8); backdrop-filter: blur(10px) saturate(1.8); }
+[data-glass] > .glass-tint { background: rgba(255, 255, 255, .62); }
+[data-glass] > .glass-rim { box-shadow: inset 1px 1px 0 -.5px rgba(255,255,255,.9), inset -1px -1px 0 -.5px rgba(255,255,255,.6), inset 0 0 0 .5px rgba(28,26,20,.08), inset 0 0 12px -4px rgba(255,255,255,.7), 0 1px 2px rgba(0,0,0,.06), 0 10px 32px -8px rgba(0,0,0,.2); }
+/* without glass.js the pill is still a frosted pill */
+.glass-pill:not([data-glass]) { background: rgba(255, 255, 255, .8); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 0 0 1px var(--line), 0 10px 32px -8px rgba(0,0,0,.2); }
+@media (prefers-reduced-transparency: reduce) {
+  [data-glass] > .glass-backdrop { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  [data-glass] > .glass-tint { background: #fff; }
+}
+
+/* type */
+h1, h2 { font-weight: 700; letter-spacing: -.035em; line-height: 1.03; text-wrap: balance; }
+h1 { font-size: clamp(2.75rem, 8.2vw, 6rem); max-width: 12em; }
+h2 { font-size: clamp(2.25rem, 6vw, 4.5rem); max-width: 14em; }
+.lede { font-size: clamp(1.125rem, 2vw, 1.5rem); line-height: 1.4; color: var(--muted); max-width: 34em; text-wrap: pretty; letter-spacing: -.01em; }
+
+/* sections */
+section { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.5rem; padding: clamp(5rem, 13vw, 11rem) var(--pad); }
+.hero { padding-top: clamp(7rem, 14vw, 11rem); padding-bottom: 0; }
+.tinted { background: var(--panel); }
+.app-icon { width: 5.5rem; height: 5.5rem; border-radius: 1.25rem; box-shadow: 0 .75rem 2rem -.75rem rgba(28, 26, 20, .45); margin-bottom: .5rem; }
+
+/* download */
+.cta { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-top: 1rem; }
+.button { display: inline-flex; align-items: center; justify-content: center; height: 3.5rem; padding: 0 2rem; border-radius: 999px; background: var(--ink); color: #fff; font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; text-decoration: none; transition: transform .15s, background .2s; }
+.button:active { transform: scale(.97); }
+@media (hover: hover) { .button:hover { background: #38342a; } }
+.meta { font-size: .875rem; color: var(--muted); }
+
+.store-badge { display: inline-block; border-radius: .6rem; transition: transform .15s; }
+.store-badge img { height: 3.25rem; width: auto; }
+.store-badge:active { transform: scale(.97); }
+
+.cta-screen { display: none; align-items: center; gap: 1.5rem; text-align: left; padding: 1.25rem 1.75rem 1.25rem 1.25rem; border-radius: 1.75rem; background: var(--panel); }
+.qr { width: 9rem; height: 9rem; padding: .75rem; border-radius: 1rem; background: #fff; }
+.cta-screen-text { display: flex; flex-direction: column; gap: .35rem; max-width: 16rem; }
+.cta-screen-text strong { font-size: 1.25rem; letter-spacing: -.02em; }
+.cta-screen-text span { color: var(--muted); font-size: .9375rem; line-height: 1.4; }
+.cta-screen-text a { font-size: .875rem; color: var(--gold); margin-top: .35rem; text-underline-offset: .2em; }
+/* wide screens that are not Android get the QR code; phones get the button */
+@media (min-width: 900px) {
+  html:not(.is-android) .cta-phone { display: none; }
+  html:not(.is-android) .cta-screen { display: flex; }
+}
+
+/* screenshots */
+.phone { width: min(17rem, 42vw); border-radius: clamp(1.25rem, 4vw, 2.25rem); border: .3rem solid #14120d; background: #14120d; box-shadow: 0 2.5rem 5rem -2rem rgba(28, 26, 20, .45), 0 0 0 1px rgba(28, 26, 20, .08); }
+.phones { display: flex; justify-content: center; gap: clamp(1rem, 4vw, 3rem); margin-top: clamp(1.5rem, 4vw, 3rem); }
+.hero-phone { width: min(21rem, 74vw); margin-top: clamp(2.5rem, 6vw, 4.5rem); border-bottom: 0; border-radius: clamp(2rem, 5vw, 2.75rem) clamp(2rem, 5vw, 2.75rem) 0 0; aspect-ratio: 451 / 760; object-fit: cover; object-position: top; }
+
+/* install */
+.steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; width: 100%; max-width: 62rem; margin-top: 1.5rem; text-align: left; }
+.steps li { display: flex; flex-direction: column; gap: .35rem; padding: 1.5rem; border-radius: 1.5rem; background: var(--panel); }
+.steps strong { font-size: 1.1875rem; letter-spacing: -.02em; }
+.steps span:last-child { color: var(--muted); font-size: .9375rem; line-height: 1.4; }
+.step-n { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--ink); color: #fff; font-size: .875rem; font-weight: 600; margin-bottom: .75rem; }
+@media (max-width: 700px) { .steps { grid-template-columns: 1fr; } }
+.note { font-size: .9375rem; color: var(--muted); max-width: 36em; }
+.note a { color: var(--gold); text-underline-offset: .2em; }
+
+/* changelog */
+.changelog { border-top: 1px solid var(--line); }
+.releases { width: 100%; max-width: 46rem; text-align: left; margin-top: 1.5rem; }
+.release { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem 2rem; padding: 2.25rem 0; border-top: 1px solid var(--line); }
+.release:first-child { border-top: 0; }
+.release header { display: flex; flex-direction: column; gap: .2rem; }
+.release h3 { font-size: 1.5rem; letter-spacing: -.03em; line-height: 1.2; }
+.release time { font-size: .875rem; color: var(--muted); }
+.release-body { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.release-body h4 { font-size: .8125rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-top: .5rem; }
+.release-body h4:first-child { margin-top: .35rem; }
+.release-body ul, .release-body ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: .4rem; }
+.release-body li::marker { color: var(--muted); }
+.release-body code { font: .875em ui-monospace, "SF Mono", Menlo, monospace; background: var(--panel); padding: .1em .35em; border-radius: .3em; overflow-wrap: anywhere; }
+.release-body a { color: var(--gold); text-underline-offset: .2em; }
+@media (max-width: 700px) { .release { grid-template-columns: 1fr; } .release header { flex-direction: row; align-items: baseline; gap: .75rem; } }
+
+.footer { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 1.5rem; padding: 2.5rem var(--pad) calc(2.5rem + env(safe-area-inset-bottom)); font-size: .875rem; color: var(--muted); border-top: 1px solid var(--line); }
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
